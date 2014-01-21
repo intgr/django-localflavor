@@ -11,7 +11,7 @@ from django.utils.translation import ugettext_lazy as _
 from .ee_counties import COUNTY_CHOICES
 
 
-idcode = re.compile(r'^([1-6])(\d\d)(\d\d)(\d\d)(?:\d{3})(\d)$')
+idcode = re.compile(r'^([1-6])(\d\d)(\d\d)(\d\d)(?:\d{4})$')
 zipcode = re.compile(r'^[1-9]\d{4}$')
 
 
@@ -71,10 +71,27 @@ class EEPersonalIdentificationCode(Field):
         if not match:
             raise ValidationError(self.error_messages['invalid_format'])
 
-        century, year, month, day, check = map(int, match.groups())
-
+        check = int(value[10])
         if check != self.ee_checksum(value[:10]):
             raise ValidationError(self.error_messages['invalid'])
+
+        try:
+            self.get_birthdate(value)
+        except ValueError:
+            raise ValidationError(self.error_messages['invalid'])
+
+        return value
+
+    def get_gender(self, value):
+        """Returns 'M' or 'F' denoting the person's gender."""
+
+        return 'M' if int(value[0]) % 2 else 'F'
+
+    def get_birthdate(self, value):
+        """Returns person's birth date"""
+
+        match = re.match(idcode, value)
+        century, year, month, day = map(int, match.groups())
 
         # Century digit also encodes gender:
         # 1 - male born in 18xx
@@ -82,9 +99,5 @@ class EEPersonalIdentificationCode(Field):
         # 3 - male born in 19xx
         # ...
         year += 1800 + 100 * ((century - 1) // 2)
-        try:
-            date(year, month, day)
-        except ValueError:
-            raise ValidationError(self.error_messages['invalid'])
 
-        return value
+        return date(year, month, day)

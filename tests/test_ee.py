@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from datetime import date
 
 from django.test import SimpleTestCase
 
@@ -59,3 +60,20 @@ class EELocalFlavorTests(SimpleTestCase):
             '61402291232': invalid,  # not leap year
         }
         self.assertFieldOutput(EEPersonalIdentificationCode, valid, invalid)
+
+        field = EEPersonalIdentificationCode()
+        genders = {
+            '32805100214': 'M',
+            '61202291237': 'F',
+        }
+        for code, val in genders.items():
+            self.assertEqual(val, field.get_gender(code))
+
+        birthdates = {
+            '32805100214': date(1928,  5, 10),
+            '61202291237': date(2012,  2, 29),
+            '10001010002': date(1800,  1,  1),
+            '69912319998': date(2099, 12, 31),
+        }
+        for code, val in birthdates.items():
+            self.assertEqual(val, field.get_birthdate(code))
